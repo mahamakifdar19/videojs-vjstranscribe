@@ -51,26 +51,11 @@ class VjsTranscribe extends Plugin {
 
     player.addClass(this.options.customClass);
 
-    this.on(player, 'ready', function () {
-      if (this.getActiveTrack()) {
-        const Button = videojs.getComponent('Button');
-        let button = new Button(player, {
-          className: 'vjs-transcribe-btn',
-          controlText: 'Transcript',
-          clickHandler: (event) => {
-            if (!this.activated) {
-              this.createTranscript(player);
-            } else {
-              this.destroyTranscript();
-            }
-          }
-        });
-        player.getChild('ControlBar').el().insertBefore(button.el(), player.getChild('ControlBar').getChild('subsCapsButton').el());
-      }
+    this.on(player, 'ready', () => {
+      this.initTranscriptButton(player);
     });
 
-
-    this.on(player.textTracks(), 'change', function (e) {
+    this.on(player.textTracks(), 'change', (e) => {
       const active = this.getActiveTrack();
       if (active.activeCues && this.widgetComponent && active !== this.widgetComponent.activeTrack) {
         this.widgetComponent.createWidgetBody(active);
@@ -83,17 +68,36 @@ class VjsTranscribe extends Plugin {
       }
     });
 
-    this.on(player, 'timeupdate', function () {
+    this.on(player, 'timeupdate', () => {
       if (this.activated && this.widgetComponent) {
         this.widgetComponent.setCue(player.currentTime());
       }
-    })
+    });
+  }
 
+  initTranscriptButton(player) {
+    if (this.getActiveTrack()) {
+      const Button = videojs.getComponent('Button');
+      let button = new Button(player, {
+        className: 'vjs-transcribe-btn',
+        controlText: 'Transcript',
+        clickHandler: (event) => {
+          if (!this.activated) {
+            this.createTranscript(player);
+          } else {
+            this.destroyTranscript();
+          }
+        }
+      });
+      player.getChild('ControlBar').el().insertBefore(button.el(), player.getChild('ControlBar').getChild('subsCapsButton').el());
+    } else {
+      setTimeout(() => this.initTranscriptButton(player), 100);
+    }
   }
 
   getTextTracks() {
     let tracks = this.player.textTracks().tracks_;
-
+  
     return tracks.filter((track) => {
       return track.kind !== 'metadata';
     })
@@ -119,9 +123,7 @@ class VjsTranscribe extends Plugin {
     this.totalTracks = this.getTextTracks().length;
 
     if (!active.activeCues) {
-      window.setTimeout(function () {
-        that.createTranscript();
-      }, 100);
+      setTimeout(() => this.createTranscript(), 100);
     } else {
       if (this.options.selector && this.totalTracks > 1) {
         this.selectorComponent = new VjsTranscribeSelector(this.options.selectorId, active, this);
